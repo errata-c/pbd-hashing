@@ -3,15 +3,12 @@
 #include <pbd/hashing/BBox.hpp>
 #include <pbd/hashing/BaseTable.hpp>
 
+#include <pbd/hashing/OverlapList.hpp>
+
 namespace pbd {
 	// Heirarchical hash table, multiple size tiers for objects to be inserted.
 	// Uses the smallest tier that an object will fit into to minimize the number of entries that are created.
 	// The downside is that each tier requires its own map, and each map must be consulted to check for collisions.
-	// 
-	// To check for overlaps, start by iterating over all the elements in the lowest tier.
-	// check to see if they overlap with neighbors in the same tier.
-	// Then check to see if they overlap with potential neighbors in the next up tier, repeat upwards.
-	// Then restart the process on the next tier. Continue until all tiers have been processed.
 	class HTable {
 	public:
 		using scalar_t = float;
@@ -92,7 +89,7 @@ namespace pbd {
 			return 64;
 		}
 
-		void build(const index_t* const ids, const bbox_t* const bounds, size_t count) {
+		void build(const bbox_t* const bounds, size_t count) {
 			if (tiers.size() == 0) {
 				return;
 			}
@@ -128,12 +125,12 @@ namespace pbd {
 				tiers[msb].count(b0 >> msb, b1 >> msb, tcounts[msb]);
 			}
 
-			for (size_t i =0 ; i < tiers.size(); ++i) {
+			for (size_t i = 0 ; i < tiers.size(); ++i) {
 				tiers[i].prepareCellEntries(tcounts[i]);
 			}
 
 			boxit = bounds;
-			for (const index_t* idit = ids; boxit != boxend; ++boxit, ++idit) {
+			for (size_t i = 0; i < count; ++i, ++boxit) {
 				ivec_t b0 = grid.calcCell(boxit->min);
 				ivec_t b1 = grid.calcCell(boxit->max);
 
@@ -147,10 +144,30 @@ namespace pbd {
 				index_t msb = msb1(l);
 				msb = std::min(msb, ntiers) - 1;
 
-				tiers[msb].insert(*idit, b0 >> msb, b1 >> msb);
+				tiers[msb].insert(static_cast<index_t>(i), b0 >> msb, b1 >> msb);
 			}
 		}
 
+		void findOverlaps(const index_t* const ids, const bbox_t* const bounds, size_t count, OverlapList& list) {
+			// To check for overlaps, start by iterating over all the elements in the lowest tier.
+			//		Get the bounds of the element we are checking.
+			//		Check each cell it is in, compare to the other elements in those cells.
+			//		add them as overlap if they have a lower id value.
+			// 
+			// Then check to see if they overlap with potential neighbors in the next up tier, repeat upwards.
+			// Then restart the process on the next tier. Continue until all tiers have been processed.
+
+			// Iterate the teirs, from lowest to highest.
+			for (size_t ctier = 0; ctier < tiers.size(); ++ctier) {
+				subtable_t & table = tiers[ctier];
+
+				auto it = table.begin();
+				auto itend = table.end();
+				for (; it != itend; ++it) {
+					
+				}
+			}
+		}
 	private:
 		grid_t grid;
 		std::vector<int64_t> tcounts;

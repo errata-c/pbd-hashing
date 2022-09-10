@@ -76,6 +76,10 @@ TEST_CASE("BBox", "[common]") {
 		REQUIRE(test0.shrinked(1) == bbox_t(vec_t(1), vec_t(9)));
 		REQUIRE(test0.shrinked(vec_t(1, 2)) == bbox_t(vec_t(1, 2), vec_t(9, 8)));
 		REQUIRE(test0.shrinked(vec_t(1, 2), vec_t(3, 4)) == bbox_t(vec_t(1, 2), vec_t(7, 6)));
+
+		REQUIRE_FALSE(test0.shrinked(1) != bbox_t(vec_t(1), vec_t(9)));
+		REQUIRE_FALSE(test0.shrinked(vec_t(1, 2)) != bbox_t(vec_t(1, 2), vec_t(9, 8)));
+		REQUIRE_FALSE(test0.shrinked(vec_t(1, 2), vec_t(3, 4)) != bbox_t(vec_t(1, 2), vec_t(7, 6)));
 	}
 	SECTION("Merge") {
 		bbox_t test0(vec_t(0), vec_t(1));
@@ -87,6 +91,10 @@ TEST_CASE("BBox", "[common]") {
 		REQUIRE(test0.merged(test1) == bbox_t(vec_t(0), vec_t(2)));
 		REQUIRE(test0.merged(test2) == bbox_t(vec_t(-1), vec_t(1)));
 		REQUIRE(test0.merged(test3) == bbox_t(vec_t(-3), vec_t(1)));
+
+		REQUIRE_FALSE(test0.merged(test1) != bbox_t(vec_t(0), vec_t(2)));
+		REQUIRE_FALSE(test0.merged(test2) != bbox_t(vec_t(-1), vec_t(1)));
+		REQUIRE_FALSE(test0.merged(test3) != bbox_t(vec_t(-3), vec_t(1)));
 	}
 
 	SECTION("Contains") {
@@ -99,6 +107,21 @@ TEST_CASE("BBox", "[common]") {
 		REQUIRE(test0.contains(test1));
 		REQUIRE(test0.contains(test2));
 		REQUIRE(!test0.contains(test3));
+	}
+
+	SECTION("Overlaps") {
+		bbox_t test0(vec_t(-1), vec_t(1));
+
+		bbox_t 
+			test1(vec_t(0), vec_t(1)),
+			test2(vec_t(-0.5), vec_t(0.5)),
+			test3(vec_t(-3), vec_t(-2)),
+			test4(vec_t(0), vec_t(2));
+
+		REQUIRE(test0.overlaps(test1));
+		REQUIRE(test0.overlaps(test2));
+		REQUIRE_FALSE(test0.overlaps(test3));
+		REQUIRE(test0.overlaps(test4));
 	}
 };
 

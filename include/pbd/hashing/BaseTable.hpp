@@ -89,6 +89,15 @@ namespace pbd {
 			});
 		}
 
+		CellRange find(const ivec_t& vec) const {
+			auto it = cellMap.find(vec);
+			if (it != cellMap.end()) {
+				return CellRange(cellEntries, it->second);
+			}
+			else {
+				return {};
+			}
+		}
 
 
 		const_iterator begin() const noexcept {
@@ -105,16 +114,16 @@ namespace pbd {
 			CellRange& operator=(const CellRange&) = default;
 
 			CellRange()
-				: first(nullptr)
-				, last(nullptr)
+				: mfirst(nullptr)
+				, mlast(nullptr)
 			{}
 			CellRange(const entries_t& list, index_t index)
 			{
-				first = list.data() + index;
-				last = first + (*first);
+				mfirst = list.data() + index;
+				mlast = mfirst + (*mfirst);
 
-				++first;
-				++last;
+				++mfirst;
+				++mlast;
 			}
 
 			explicit operator bool() const noexcept {
@@ -122,25 +131,34 @@ namespace pbd {
 			}
 
 			size_t size() const noexcept {
-				return last - first;	
+				return mlast - mfirst;
 			}
 			bool empty() const noexcept {
-				return first == last;
+				return mfirst == mlast;
 			}
 
 			const index_t& operator[](int32_t i) const noexcept {
 				assert(i >= 0 && i < size());
-				return first[i];
+				return mfirst[i];
 			}
 
 			const index_t* begin() const noexcept {
-				return first;
+				return mfirst;
 			}
 			const index_t* end() const noexcept {
-				return last;
+				return mlast;
+			}
+
+			const index_t& front() const noexcept {
+				assert(!empty());
+				return *mfirst;
+			}
+			const index_t& back() const noexcept {
+				assert(!empty());
+				return *(mlast-1);
 			}
 		private:
-			const index_t* first, * last;
+			const index_t* mfirst, * mlast;
 		};
 
 		class const_iterator {
@@ -155,10 +173,10 @@ namespace pbd {
 			{}
 
 			CellRange operator*() const {
-				return CellRange(*entries, it->second);
+				return range();
 			}
 			CellRange operator->() const {
-				return CellRange(*entries, it->second);
+				return range();
 			}
 
 			const_iterator operator++(int) {
@@ -176,6 +194,13 @@ namespace pbd {
 			}
 			bool operator==(const const_iterator& other) const noexcept {
 				return it == other.it;
+			}
+
+			const ivec_t& cell() const {
+				return it->first;
+			}
+			CellRange range() const {
+				return CellRange(*entries, it->second);
 			}
 		private:
 			map_iter_t it;

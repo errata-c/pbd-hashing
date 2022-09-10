@@ -36,6 +36,9 @@ namespace pbd {
 			self_t tmp = a;
 			return tmp.merge(b);
 		};
+		static bool Overlaps(const self_t& a, const self_t& b) noexcept {
+			return a.overlaps(b);
+		}
 
 		BBox() noexcept
 			: min{ T(0) }
@@ -248,11 +251,18 @@ namespace pbd {
 		};
 
 		bool contains(const self_t& other) const noexcept {
-			return !(
-				glm::any(glm::greaterThan(other.min, max)) || 
-				glm::any(glm::lessThan(other.max, min))
+			return (
+				glm::all(glm::lessThanEqual(other.max, max)) &&
+				glm::all(glm::greaterThanEqual(other.min, min))
 			);
 		};
+
+		bool overlaps(const self_t & other) const noexcept {
+			return !(
+				glm::any(glm::greaterThan(other.min, max)) ||
+				glm::any(glm::lessThan(other.max, min))
+			);
+		}
 
 		bool operator==(const self_t& other) const noexcept {
 			return
