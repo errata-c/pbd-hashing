@@ -10,11 +10,12 @@
 using namespace pbd;
 
 TEST_CASE("BaseTable") {
-	using index_t = BaseTable::index_t;
-	using ivec_t = BaseTable::ivec_t;
-	using CellRange = BaseTable::CellRange;
+	using Table = BaseTable<float, int32_t, 3>;
+	using index_t = Table::index_t;
+	using ivec_t = Table::ivec_t;
+	using CellRange = Table::CellRange;
 
-	BaseTable table;
+	Table table;
 
 	REQUIRE(table.numCells() == 0);
 

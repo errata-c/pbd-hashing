@@ -7,14 +7,12 @@
 #include <parallel_hashmap/phmap.h>
 
 namespace pbd {
-	// Dynamically sized vector hash table.
-	// This is a true hash table, not just a grid method.
-	// Grid based methods are essentially just a fancy radix sort.
+	template<typename Scalar, typename Index, glm::length_t L>
 	class BaseTable {
 	public:
-		using scalar_t = float;
-		using index_t = int32_t;
-		static constexpr glm::length_t Dims = 3;
+		using scalar_t = Scalar;
+		using index_t = Index;
+		static constexpr glm::length_t Dims = L;
 		using ivec_t = glm::vec<Dims, index_t>;
 
 		using map_t = phmap::parallel_flat_hash_map<ivec_t, index_t>;

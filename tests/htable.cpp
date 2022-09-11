@@ -10,22 +10,24 @@
 
 using namespace pbd;
 
-class TestTable : public HTable {
+using Table = HTable<float, int32_t, 3>;
+
+class TestTable : public Table {
 public:
-	using ClassifiedTier = HTable::ClassifiedTier;
+	using ClassifiedTier = Table::ClassifiedTier;
 	ClassifiedTier test_classify(const bbox_t& bbox) {
 		return classify(bbox);
 	}
 };
 
 TEST_CASE("HTable") {
-	using bbox_t = HTable::bbox_t;
-	using index_t = HTable::index_t;
-	using vec_t = HTable::vec_t;
-	using ivec_t = HTable::ivec_t;
-	using grid_t = HTable::grid_t;
+	using bbox_t = Table::bbox_t;
+	using index_t = Table::index_t;
+	using vec_t = Table::vec_t;
+	using ivec_t = Table::ivec_t;
+	using grid_t = Table::grid_t;
 
-	HTable table;
+	Table table;
 
 	REQUIRE_FALSE(table.isInitialized());
 	REQUIRE(table.numCells() == 0);

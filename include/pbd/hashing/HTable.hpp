@@ -1,4 +1,7 @@
 #pragma once
+#include <cinttypes>
+#include <vector>
+
 #include <pbd/hashing/Grid.hpp>
 #include <pbd/hashing/BBox.hpp>
 #include <pbd/hashing/BaseTable.hpp>
@@ -9,17 +12,18 @@ namespace pbd {
 	// Heirarchical hash table, multiple size tiers for objects to be inserted.
 	// Uses the smallest tier that an object will fit into to minimize the number of entries that are created.
 	// The downside is that each tier requires its own map, and each map must be consulted to check for collisions.
+	template<typename Scalar, typename Index, glm::length_t L>
 	class HTable {
 	public:
-		using scalar_t = float;
-		using index_t = int32_t;
-		static constexpr glm::length_t Dims = 3;
+		using scalar_t = Scalar;
+		using index_t = Index;
+		static constexpr glm::length_t Dims = L;
 		using grid_t = StrictGrid<index_t, Dims, scalar_t>;
 		using bbox_t = BBox<Dims, scalar_t>;
-		using vec_t = grid_t::vec_t;
-		using ivec_t = grid_t::ivec_t;
+		using vec_t = typename grid_t::vec_t;
+		using ivec_t = typename grid_t::ivec_t;
 
-		using subtable_t = BaseTable;
+		using subtable_t = BaseTable<scalar_t, index_t, Dims>;
 
 	private:
 		static index_t msb1(index_t val) {
@@ -134,7 +138,7 @@ namespace pbd {
 		}
 
 		void findOverlaps(const index_t* const ids, const bbox_t* const bounds, size_t count, OverlapList& list) {
-			using CellRange = BaseTable::CellRange;
+			using CellRange = typename subtable_t::CellRange;
 			/*
 			Iterate over all the bounding boxes. Classify the box tier.
 			For each cell it it occupies in its tier, one-to-one compare all its neighbors.

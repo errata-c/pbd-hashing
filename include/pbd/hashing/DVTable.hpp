@@ -7,6 +7,7 @@ namespace pbd {
 	// Dynamically sized vector hash table.
 	// This is a true hash table, not just a grid method.
 	// Grid based methods are essentially just a fancy radix sort.
+	
 	class DVTable {
 	public:
 		using scalar_t = float;
@@ -17,7 +18,7 @@ namespace pbd {
 		using vec_t = grid_t::vec_t;
 		using ivec_t = grid_t::ivec_t;
 
-		using subtable_t = BaseTable;
+		using subtable_t = BaseTable<scalar_t, index_t, Dims>;
 
 		void initialize(const grid_t& _grid) {
 			grid = _grid;
