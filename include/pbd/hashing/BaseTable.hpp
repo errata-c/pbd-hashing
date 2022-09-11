@@ -35,9 +35,6 @@ namespace pbd {
 		size_t numCells() const {
 			return cellMap.size();
 		}
-		size_t numEntries() const {
-			return cellEntries.size();
-		}
 
 		void count(const ivec_t& vec, int64_t& totalEntries) {
 			auto it = cellMap.find(vec);
@@ -48,8 +45,8 @@ namespace pbd {
 				totalEntries += 2;
 			}
 			else {
-				++it->second;
 				++totalEntries;
+				++it->second;
 			}
 		}
 		void count(const ivec_t& b0, const ivec_t& b1, int64_t & totalEntries) {
@@ -60,28 +57,47 @@ namespace pbd {
 		void prepareCellEntries(int64_t totalEntries) {
 			cellEntries.resize(totalEntries, 0);
 
+			// Early out.
+			if (totalEntries == 0) {
+				return;
+			}
+
 			int64_t tot = 0;
 			for (auto& kv : cellMap) {
-				int64_t tmp = kv.second;
-				assert(tot < MaxIndex);
+				// ecount is the number of entries this cell is going to use, including the first entry that holds ecount-1.
+				index_t ecount = kv.second;
+
+				// Remap the cell to the current index in the entry list.
 				kv.second = static_cast<index_t>(tot);
-				tot += tmp;
+
+				// Move to the next open position in the entry list.
+				tot += ecount;
+				// Make sure we aren't over the limit.
+				assert(tot < MaxIndex);
 
 				// First entry is the number of ids in the cell.
-				assert(tmp < MaxIndex);
-				cellEntries[kv.second] = static_cast<index_t>(tmp);
+				cellEntries[kv.second] = ecount - 1;
 
-				// Put the offset to the end of this cell's entry list at the first position in list.
-				// We will use this in the next step to insert properly.
-				cellEntries[kv.second + 1] = static_cast<index_t>(tmp - 1);
+				// We use this value in the next step to make sure we insert everything correctly.
+				cellEntries[kv.second + 1] = ecount - 1;
 			}
 		}
 		void insert(index_t id, const ivec_t& vec) {
+			assert(cellMap.contains(vec));
+
+			// Grab the index associated with this vec
 			index_t start = cellMap[vec];
 
-			index_t& offset = cellEntries[start + 1];
-			cellEntries[start + offset + 1] = id;
-			--offset;
+			// The offset to the end of the cell entries range.
+			index_t& old_offset = cellEntries[start + 1];
+			index_t offset = old_offset;
+
+			// We HAVE to do this before the next statement.
+			// Otherwise we can end up modifying the id value we just inserted.
+			--old_offset;
+
+			// We insert the ids in REVERSE order.
+			cellEntries[start + offset] = id;
 		}
 		void insert(index_t id, const ivec_t& b0, const ivec_t& b1) {
 			applyAllCells(b0, b1, [&](const ivec_t& vec) {

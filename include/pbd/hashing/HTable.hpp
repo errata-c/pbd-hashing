@@ -57,20 +57,15 @@ namespace pbd {
 			assert(ntiers < maxTiers());
 			ntiers = std::min(maxTiers(), ntiers);
 
-			// Get the size of the grid,  then scale it in powers of two.
-			index_t cells = grid.cells().x;
-			for (size_t i = 0; i < ntiers; ++i) {
-				cells /= 2;
-				cells = std::max(cells, index_t(1));
-
-				if (cells == 1) {
-					ntiers = i;
-					break;
-				}
-			}
-
 			tiers.resize(ntiers);
 			tcounts.resize(ntiers, 0);
+		}
+
+		bool isInitialized() const noexcept {
+			return tiers.size() > 0;
+		}
+		explicit operator bool() const noexcept {
+			return isInitialized();
 		}
 
 		void clear() {
@@ -87,6 +82,17 @@ namespace pbd {
 		}
 		static size_t maxTiers() {
 			return 64;
+		}
+		size_t numCells() const {
+			size_t count = 0;
+			for (const subtable_t & table : tiers) {
+				count += table.numCells();
+			}
+			return count;
+		}
+		size_t numCellsTier(size_t i) const {
+			assert(i < numTiers());
+			return tiers[i].numCells();
 		}
 
 		void build(const bbox_t* const bounds, size_t count) {
@@ -106,23 +112,13 @@ namespace pbd {
 			}
 
 			index_t ntiers = static_cast<index_t>(tiers.size());
+			ClassifiedTier ctier;
 
 			const bbox_t* boxit = bounds;
 			const bbox_t* boxend = bounds + count;
 			for (; boxit != boxend; ++boxit) {
-				ivec_t b0 = grid.calcCell(boxit->min);
-				ivec_t b1 = grid.calcCell(boxit->max);
-				ivec_t size = b1 - b0;
-				index_t l = 0;
-				for (int i = 0; i < Dims; ++i) {
-					l = std::max(l, size[i]);
-				}
-				l += 1;
-
-				index_t msb = msb1(l);
-				msb = std::min(msb, ntiers) - 1;
-
-				tiers[msb].count(b0 >> msb, b1 >> msb, tcounts[msb]);
+				ctier = classify(*boxit);
+				tiers[ctier.msb].count(ctier.b0, ctier.b1, tcounts[ctier.msb]);
 			}
 
 			for (size_t i = 0 ; i < tiers.size(); ++i) {
@@ -131,46 +127,128 @@ namespace pbd {
 
 			boxit = bounds;
 			for (size_t i = 0; i < count; ++i, ++boxit) {
-				ivec_t b0 = grid.calcCell(boxit->min);
-				ivec_t b1 = grid.calcCell(boxit->max);
+				ctier = classify(*boxit);
 
-				ivec_t size = b1 - b0;
-				index_t l = 0;
-				for (int i = 0; i < Dims; ++i) {
-					l = std::max(l, size[i]);
-				}
-				l += 1;
-
-				index_t msb = msb1(l);
-				msb = std::min(msb, ntiers) - 1;
-
-				tiers[msb].insert(static_cast<index_t>(i), b0 >> msb, b1 >> msb);
+				tiers[ctier.msb].insert(static_cast<index_t>(i), ctier.b0, ctier.b1);
 			}
 		}
 
 		void findOverlaps(const index_t* const ids, const bbox_t* const bounds, size_t count, OverlapList& list) {
-			// To check for overlaps, start by iterating over all the elements in the lowest tier.
-			//		Get the bounds of the element we are checking.
-			//		Check each cell it is in, compare to the other elements in those cells.
-			//		add them as overlap if they have a lower id value.
-			// 
-			// Then check to see if they overlap with potential neighbors in the next up tier, repeat upwards.
-			// Then restart the process on the next tier. Continue until all tiers have been processed.
+			using CellRange = BaseTable::CellRange;
+			/*
+			Iterate over all the bounding boxes. Classify the box tier.
+			For each cell it it occupies in its tier, one-to-one compare all its neighbors.
+			Then check all the cells it occupies in the next up tier.
+			*/
+			list.clear();
 
-			// Iterate the teirs, from lowest to highest.
-			for (size_t ctier = 0; ctier < tiers.size(); ++ctier) {
-				subtable_t & table = tiers[ctier];
 
-				auto it = table.begin();
-				auto itend = table.end();
-				for (; it != itend; ++it) {
-					
+			// Iterate the bounds
+			const bbox_t * boxit = bounds;
+			const bbox_t* const boxend = bounds + count;
+			size_t bidx = 0;
+			ClassifiedTier ctier;
+			for (; boxit != boxend; ++boxit, ++bidx) {
+				const bbox_t& bbox = *boxit;
+				ctier = classify(*boxit);
+
+				list.group();
+				list.push(ids[bidx]);
+
+				// For the first tier the bound is in:
+				{
+					subtable_t& table = tiers[ctier.msb];
+
+					// For each cell the bound occupies, find it in the table
+					applyAllCells(ctier.b0, ctier.b1, [&](const ivec_t& loc) {
+							// Find the cell 'loc' in the table.
+							CellRange cell = table.find(loc);
+
+							// For each element in the range, check if it overlaps.
+							for (index_t cid : cell) {
+								// Ignore any ids greater than the box id, to make sure we only add a pairing once.
+								if (cid >= bidx) {
+									continue;
+								}
+
+								const bbox_t& other = bounds[cid];
+								if (bbox.overlaps(other)) {
+									// Add to the list.
+									list.push(ids[cid]);
+								}
+							}
+						});
+
+					ctier.b0 /= 2;
+					ctier.b1 /= 2;
 				}
+
+				for (index_t tier = ctier.msb+1, ntiers = static_cast<index_t>(tiers.size()); tier < ntiers; ++tier) {
+					subtable_t& table = tiers[tier];
+
+					// For each cell the bound occupies, find it in the table
+					applyAllCells(ctier.b0, ctier.b1, [&](const ivec_t& loc) {
+							// Find the cell 'loc' in the table.
+							CellRange cell = table.find(loc);
+
+							// For each element in the range, check if it overlaps.
+							for (index_t cid : cell) {
+								// No longer have to ignore any ids.
+
+								const bbox_t& other = bounds[cid];
+								if (bbox.overlaps(other)) {
+									// Add to the list.
+									list.push(ids[cid]);
+								}
+							}
+						});
+
+					ctier.b0 /= 2;
+					ctier.b1 /= 2;
+				}
+				list.ungroup();
 			}
+
+			// Done
 		}
-	private:
+
+	protected:
 		grid_t grid;
 		std::vector<int64_t> tcounts;
 		std::vector<subtable_t> tiers;
+
+		struct ClassifiedTier {
+			ivec_t b0, b1;
+			index_t msb;
+		};
+		ClassifiedTier classify(const bbox_t & bbox) {
+			ClassifiedTier result;
+			result.b0 = grid.calcCell(bbox.min);
+			result.b1 = grid.calcCell(bbox.max);
+
+			ivec_t size = result.b1 - result.b0;
+			index_t l = 0;
+			for (int i = 0; i < Dims; ++i) {
+				l = std::max(l, size[i]);
+			}
+			l += 1;
+
+			index_t tier = 0;
+			index_t cap = static_cast<index_t>(tiers.size()) - 1;
+
+			while ((l > 1) && (tier < cap)) {
+				l = l / 2;
+				++tier;
+			}
+
+			result.msb = tier;
+			index_t factor = 1 << result.msb;
+			for (int i = 0; i < Dims; ++i) {
+				result.b0[i] /= factor;
+				result.b1[i] /= factor;
+			}
+
+			return result;
+		}
 	};
 }

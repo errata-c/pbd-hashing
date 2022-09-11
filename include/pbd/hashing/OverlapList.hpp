@@ -2,12 +2,14 @@
 #include <cinttypes>
 #include <vector>
 #include <cassert>
+#include <parallel_hashmap/phmap.h>
 
 namespace pbd {
 	class OverlapList {
 	public:
 		using index_t = int32_t;
 		using container_t = std::vector<index_t>;
+		using set_t = phmap::flat_hash_set<index_t>;
 
 		class Overlaps;
 		class const_iterator;
@@ -20,11 +22,18 @@ namespace pbd {
 
 		OverlapList()
 			: count(0)
-		{}
+		{
+#ifndef NDEBUG
+			inGroup = false;
+#endif
+		}
 
 		void clear() {
 			count = 0;
 			list.clear();
+		}
+		bool empty() const noexcept {
+			return count == 0;
 		}
 		size_t size() const noexcept {
 			return count;
@@ -35,15 +44,17 @@ namespace pbd {
 #ifndef NDEBUG
 			inGroup = true;
 #endif
-			++count;
 			list.push_back(0);
 			list.push_back(1);
 		}
 		void push(index_t idx) {
 			assert(inGroup);
-			index_t tmp = list.back();
-			list.back() = idx;
-			list.push_back(tmp + 1);
+			auto result = gset.insert(idx);
+			if(result.second) {
+				index_t offset = list.back();
+				list.back() = idx;
+				list.push_back(offset + 1);
+			}
 		}
 		void ungroup() {
 			assert(inGroup);
@@ -52,14 +63,35 @@ namespace pbd {
 #endif
 
 			index_t offset = list.back();
-			assert((offset - 1) != 0); // Empty group
-			size_t index = list.size() - offset -1;
+			
+			if (offset <= 2) {
+				// Empty group
+				list.pop_back();
+				list.pop_back();
+				if (offset == 2) {
+					// Single element group, discard.
+					list.pop_back();
+				}
+			}
+			else {
+				size_t index = list.size() - offset - 1;
 
-			// Store the number of elements in the first index.
-			// This means that its length encoded, first index is the count, followed by count elements. Then the next group. etc...
-			list[index] = offset - 1;
+				// Store the number of elements in the first index.
+				// This means that its length encoded, first index is the count, followed by count elements. Then the next group. etc...
+				list[index] = offset - 1;
 
-			list.pop_back();
+				list.pop_back();
+				++count;
+			}
+
+			gset.clear();
+		}
+
+		const_iterator begin() const noexcept {
+			return const_iterator(list.begin());
+		}
+		const_iterator end() const noexcept {
+			return const_iterator(list.end());
 		}
 
 
@@ -160,6 +192,9 @@ namespace pbd {
 	private:
 		size_t count;
 		container_t list;
+		// We may want to add a set to prevent duplicates from being added to the list.
+		set_t gset;
+
 #ifndef NDEBUG
 		bool inGroup;
 #endif

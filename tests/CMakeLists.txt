@@ -5,8 +5,10 @@ find_package(Catch2 CONFIG REQUIRED)
 include(Catch)
 
 add_executable(basic_test
-	"basic.cpp"
 	"common.cpp"
+	"overlaps.cpp"
+	"base_table.cpp"
+	"htable.cpp"
 )
 target_link_libraries(basic_test PRIVATE
 	pbd::hashing
