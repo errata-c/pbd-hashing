@@ -18,13 +18,15 @@ namespace pbd {
 		using scalar_t = Scalar;
 		using index_t = Index;
 		static constexpr glm::length_t Dims = L;
-		using grid_t = StrictGrid<index_t, Dims, scalar_t>;
+		using grid_t = Grid<index_t, Dims, scalar_t>;
 		using bbox_t = BBox<Dims, scalar_t>;
 		using vec_t = typename grid_t::vec_t;
 		using ivec_t = typename grid_t::ivec_t;
 
 		using subtable_t = BaseTable<scalar_t, index_t, Dims>;
 
+		using const_iterator = typename subtable_t::const_iterator;
+		using CellRange = typename subtable_t::CellRange;
 	private:
 		static index_t msb1(index_t val) {
 			for (int i = 1, c = sizeof(index_t) * 8; i < c; ++i) {
@@ -52,8 +54,8 @@ namespace pbd {
 			return loc;
 		}
 	public:
-		void initialize(scalar_t _min, scalar_t _max, index_t _cells, size_t ntiers) {
-			initialize(grid_t(_min, _max, _cells), ntiers);
+		void initialize(const vec_t & _cell_size, size_t ntiers) {
+			initialize(grid_t(_cell_size), ntiers);
 		}
 		void initialize(const grid_t& _grid, size_t ntiers) {
 			grid = _grid;
@@ -138,7 +140,6 @@ namespace pbd {
 		}
 
 		void findOverlaps(const index_t* const ids, const bbox_t* const bounds, size_t count, OverlapList& list) {
-			using CellRange = typename subtable_t::CellRange;
 			/*
 			Iterate over all the bounding boxes. Classify the box tier.
 			For each cell it it occupies in its tier, one-to-one compare all its neighbors.

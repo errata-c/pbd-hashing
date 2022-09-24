@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.21)
 project(PBD_HASHING
 LANGUAGES C CXX
 VERSION 0.1.0)
@@ -36,7 +36,7 @@ target_include_directories(${TARGET_NAME} INTERFACE
 
 	# Build only include directories
 	"$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
-	$<BUILD_INTERFACE:${PHMAP_HEADERS}>
+	"$<BUILD_INTERFACE:${PHMAP_HEADERS}>"
 
 	# Install include directories
 	"$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
@@ -91,8 +91,8 @@ if(PBD_HASHING_IS_TOP_LEVEL)
 		# Non-target dependencies should probably be found in the post config, and added onto the imported target manually.
 		# Non-target dependencies kinda suck, avoid them if you can.
 
-		#PRECONFIG "cmake/preconfig.cmake"
-		#POSTCONFIG "cmake/postconfig.cmake"
+		PRECONFIG "cmake/preconfig.cmake"
+		POSTCONFIG "cmake/postconfig.cmake"
 
 		# Only add this option if the library is header only, or an interface library.
 		ARCH_INDEPENDENT

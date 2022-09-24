@@ -9,6 +9,8 @@ add_executable(basic_test
 	"overlaps.cpp"
 	"base_table.cpp"
 	"htable.cpp"
+	"dvtable.cpp"
+	"grid.cpp"
 )
 target_link_libraries(basic_test PRIVATE
 	pbd::hashing

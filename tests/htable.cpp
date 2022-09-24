@@ -34,11 +34,10 @@ TEST_CASE("HTable") {
 	REQUIRE(table.numTiers() == 0);
 
 	// Cells cover a 1x1x1 area, with 4 tiers in the heirarchy. (2x2x2, 4x4x4, and 8x8x8)
-	table.initialize(0.f, 1.f, 1, 4);
+	table.initialize(vec_t(1), 4);
 	REQUIRE(table.isInitialized());
 	REQUIRE(table.numTiers() == 4);
 	REQUIRE(table.numCells() == 0);
-
 
 	std::vector<bbox_t> bounds;
 	std::vector<index_t> ids;
