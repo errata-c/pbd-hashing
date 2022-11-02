@@ -1,20 +1,7 @@
 project(PBD_HASHING_TESTS)
 
-find_package(Catch2 CONFIG REQUIRED)
+# Tests for the basic hashing algorithms.
+add_subdirectory("basic")
 
-include(Catch)
-
-add_executable(basic_test
-	"common.cpp"
-	"overlaps.cpp"
-	"base_table.cpp"
-	"htable.cpp"
-	"dvtable.cpp"
-	"grid.cpp"
-)
-target_link_libraries(basic_test PRIVATE
-	pbd::hashing
-	Catch2::Catch2WithMain
-)
-
-catch_discover_tests(basic_test)
+# Tests for the partitioning algorithm.
+add_subdirectory("partitioning")
