@@ -1,7 +1,7 @@
 #include <array>
 
-#include <pbd/hashing/BBox.hpp>
-#include <pbd/hashing/common.hpp>
+#include <pbd/common/BBox.hpp>
+#include <pbd/hashing/util.hpp>
 #include <pbd/hashing/Grid.hpp>
 
 #include <catch2/catch_all.hpp>
@@ -70,16 +70,16 @@ TEST_CASE("BBox", "[common]") {
 		REQUIRE( test0.expanded(vec_t(1, 2)) == bbox_t(vec_t(-1, -2), vec_t(2, 3)) );
 		REQUIRE( test0.expanded(vec_t(1, 2), vec_t(3.f, 4.f)) == bbox_t(vec_t(-1, -2), vec_t(4, 5)) );
 	}
-	SECTION("Shrink") {
+	SECTION("Contract") {
 		bbox_t test0(vec_t(0), vec_t(10));
 
-		REQUIRE(test0.shrinked(1) == bbox_t(vec_t(1), vec_t(9)));
-		REQUIRE(test0.shrinked(vec_t(1, 2)) == bbox_t(vec_t(1, 2), vec_t(9, 8)));
-		REQUIRE(test0.shrinked(vec_t(1, 2), vec_t(3, 4)) == bbox_t(vec_t(1, 2), vec_t(7, 6)));
+		REQUIRE(test0.contracted(1) == bbox_t(vec_t(1), vec_t(9)));
+		REQUIRE(test0.contracted(vec_t(1, 2)) == bbox_t(vec_t(1, 2), vec_t(9, 8)));
+		REQUIRE(test0.contracted(vec_t(1, 2), vec_t(3, 4)) == bbox_t(vec_t(1, 2), vec_t(7, 6)));
 
-		REQUIRE_FALSE(test0.shrinked(1) != bbox_t(vec_t(1), vec_t(9)));
-		REQUIRE_FALSE(test0.shrinked(vec_t(1, 2)) != bbox_t(vec_t(1, 2), vec_t(9, 8)));
-		REQUIRE_FALSE(test0.shrinked(vec_t(1, 2), vec_t(3, 4)) != bbox_t(vec_t(1, 2), vec_t(7, 6)));
+		REQUIRE_FALSE(test0.contracted(1) != bbox_t(vec_t(1), vec_t(9)));
+		REQUIRE_FALSE(test0.contracted(vec_t(1, 2)) != bbox_t(vec_t(1, 2), vec_t(9, 8)));
+		REQUIRE_FALSE(test0.contracted(vec_t(1, 2), vec_t(3, 4)) != bbox_t(vec_t(1, 2), vec_t(7, 6)));
 	}
 	SECTION("Merge") {
 		bbox_t test0(vec_t(0), vec_t(1));
@@ -122,6 +122,27 @@ TEST_CASE("BBox", "[common]") {
 		REQUIRE(test0.overlaps(test2));
 		REQUIRE_FALSE(test0.overlaps(test3));
 		REQUIRE(test0.overlaps(test4));
+	}
+
+	SECTION("rotate") {
+		bbox_t test0(vec_t(-1), vec_t(1));
+
+		std::complex<float> rot(0, 1);
+
+		bbox_t res = test0.rotated(rot);
+		REQUIRE(res.min.x == Approx(test0.min.x));
+		REQUIRE(res.min.y == Approx(test0.min.y));
+
+		REQUIRE(res.max.x == Approx(test0.max.x));
+		REQUIRE(res.max.y == Approx(test0.max.y));
+
+		res = test0.rotated(3.141592653 * (0.25));
+
+		REQUIRE(res.min.x == Approx(-std::sqrt(2.0)));
+		REQUIRE(res.min.y == Approx(-std::sqrt(2.0)));
+
+		REQUIRE(res.max.x == Approx(std::sqrt(2.0)));
+		REQUIRE(res.max.y == Approx(std::sqrt(2.0)));
 	}
 };
 

@@ -20,4 +20,5 @@ In order to properly test and characterize this algorithm, I need a 2D test scen
 
 
 
-- [ ] Implement a more compact version of the hierarchical hash table.
+- [x] Implement a more compact version of the hierarchical hash table. (Done in branch`htable`)
+- [ ] Test the table redesign

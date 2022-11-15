@@ -3,19 +3,19 @@
 #include <vector>
 #include <limits>
 #include <cassert>
-#include <pbd/hashing/common.hpp>
+#include <pbd/hashing/util.hpp>
 #include <parallel_hashmap/phmap.h>
 
 namespace pbd {
-	template<typename Scalar, typename Index, glm::length_t L>
+	template<typename Scalar, typename Index, glm::length_t L, typename Hasher = std::hash<glm::vec<L, Index>>>
 	class BaseTable {
 	public:
 		using scalar_t = Scalar;
 		using index_t = Index;
 		static constexpr glm::length_t Dims = L;
 		using ivec_t = glm::vec<Dims, index_t>;
-
-		using map_t = phmap::parallel_flat_hash_map<ivec_t, index_t>;
+		
+		using map_t = phmap::parallel_flat_hash_map<ivec_t, index_t, Hasher>;
 		using map_iter_t = typename map_t::const_iterator;
 		using entries_t = std::vector<index_t>;
 

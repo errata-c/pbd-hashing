@@ -1,8 +1,8 @@
 #include <glm/gtx/io.hpp>
 #include <array>
 
-#include <pbd/hashing/BBox.hpp>
-#include <pbd/hashing/common.hpp>
+#include <pbd/common/BBox.hpp>
+#include <pbd/hashing/util.hpp>
 #include <pbd/hashing/Grid.hpp>
 #include <pbd/hashing/HTable.hpp>
 
@@ -19,6 +19,8 @@ public:
 		return classify(bbox);
 	}
 };
+using CTier = TestTable::ClassifiedTier;
+
 
 TEST_CASE("HTable") {
 	using bbox_t = Table::bbox_t;
@@ -47,7 +49,7 @@ TEST_CASE("HTable") {
 	phmap::flat_hash_set<index_t> group;
 
 	SECTION("Classify") {
-		using ClassifiedTier = TestTable::ClassifiedTier;
+		
 		TestTable & ttable = static_cast<TestTable&>(table);
 		const grid_t& grid = ttable.getGrid();
 
@@ -60,7 +62,7 @@ TEST_CASE("HTable") {
 		REQUIRE(loc0 == ivec_t(0, 0, 0));
 		REQUIRE(loc1 == ivec_t(1, 1, 1));
 
-		ClassifiedTier ctier = ttable.test_classify(test);
+		CTier ctier = ttable.test_classify(test);
 		REQUIRE(ctier.msb == 1);
 
 		test = bbox_t(vec_t(0.1), vec_t(3.9));
@@ -87,7 +89,6 @@ TEST_CASE("HTable") {
 		prep();
 		
 		REQUIRE(overlapList.size() == 0);
-		REQUIRE(table.numCellsTier(0) == 1);
 		REQUIRE(table.numCells() == 1);
 	}
 
@@ -98,10 +99,6 @@ TEST_CASE("HTable") {
 
 		REQUIRE(overlapList.size() == 0);
 		REQUIRE(table.numCells() == 1);
-		REQUIRE(table.numCellsTier(0) == 1);
-		REQUIRE(table.numCellsTier(1) == 0);
-		REQUIRE(table.numCellsTier(2) == 0);
-		REQUIRE(table.numCellsTier(3) == 0);
 	}
 
 	SECTION("Bound by itself, fitting in the second tier") {
@@ -111,10 +108,6 @@ TEST_CASE("HTable") {
 
 		REQUIRE(overlapList.size() == 0);
 		REQUIRE(table.numCells() == 1);
-		REQUIRE(table.numCellsTier(0) == 0);
-		REQUIRE(table.numCellsTier(1) == 1);
-		REQUIRE(table.numCellsTier(2) == 0);
-		REQUIRE(table.numCellsTier(3) == 0);
 	}
 	SECTION("Bound by itself, fitting in the third tier") {
 		add(vec_t(0.1), vec_t(3.9), 1);
@@ -123,10 +116,6 @@ TEST_CASE("HTable") {
 
 		REQUIRE(overlapList.size() == 0);
 		REQUIRE(table.numCells() == 1);
-		REQUIRE(table.numCellsTier(0) == 0);
-		REQUIRE(table.numCellsTier(1) == 0);
-		REQUIRE(table.numCellsTier(2) == 1);
-		REQUIRE(table.numCellsTier(3) == 0);
 	}
 	SECTION("Bound by itself, fitting in the fourth tier") {
 		add(vec_t(0.1), vec_t(7.9), 1);
@@ -135,10 +124,6 @@ TEST_CASE("HTable") {
 
 		REQUIRE(overlapList.size() == 0);
 		REQUIRE(table.numCells() == 1);
-		REQUIRE(table.numCellsTier(0) == 0);
-		REQUIRE(table.numCellsTier(1) == 0);
-		REQUIRE(table.numCellsTier(2) == 0);
-		REQUIRE(table.numCellsTier(3) == 1);
 	}
 
 
@@ -161,10 +146,6 @@ TEST_CASE("HTable") {
 		REQUIRE(group.contains(1));
 
 		REQUIRE(table.numCells() == 1);
-		REQUIRE(table.numCellsTier(0) == 1);
-		REQUIRE(table.numCellsTier(1) == 0);
-		REQUIRE(table.numCellsTier(2) == 0);
-		REQUIRE(table.numCellsTier(3) == 0);
 	}
 	SECTION("Bound overlapping a single other bound, both fit in the second tier") {
 		add(vec_t(0.1), vec_t(1.5), 0);
@@ -185,10 +166,6 @@ TEST_CASE("HTable") {
 		REQUIRE(group.contains(1));
 
 		REQUIRE(table.numCells() == 1);
-		REQUIRE(table.numCellsTier(0) == 0);
-		REQUIRE(table.numCellsTier(1) == 1);
-		REQUIRE(table.numCellsTier(2) == 0);
-		REQUIRE(table.numCellsTier(3) == 0);
 	}
 	SECTION("Bound overlapping a single other bound, both fit in the third tier") {
 		add(vec_t(0.1), vec_t(3.5), 0);
@@ -209,10 +186,6 @@ TEST_CASE("HTable") {
 		REQUIRE(group.contains(1));
 
 		REQUIRE(table.numCells() == 1);
-		REQUIRE(table.numCellsTier(0) == 0);
-		REQUIRE(table.numCellsTier(1) == 0);
-		REQUIRE(table.numCellsTier(2) == 1);
-		REQUIRE(table.numCellsTier(3) == 0);
 	}
 	SECTION("Bound overlapping a single other bound, both fit in the fourth tier") {
 		add(vec_t(0.1), vec_t(7.5), 0);
@@ -233,10 +206,6 @@ TEST_CASE("HTable") {
 		REQUIRE(group.contains(1));
 
 		REQUIRE(table.numCells() == 1);
-		REQUIRE(table.numCellsTier(0) == 0);
-		REQUIRE(table.numCellsTier(1) == 0);
-		REQUIRE(table.numCellsTier(2) == 0);
-		REQUIRE(table.numCellsTier(3) == 1);
 	}
 
 	// Test a bound overlapping a single other bound, one in first tier, one in second tier.
@@ -259,10 +228,6 @@ TEST_CASE("HTable") {
 		REQUIRE(group.contains(1));
 
 		REQUIRE(table.numCells() == 2);
-		REQUIRE(table.numCellsTier(0) == 1);
-		REQUIRE(table.numCellsTier(1) == 1);
-		REQUIRE(table.numCellsTier(2) == 0);
-		REQUIRE(table.numCellsTier(3) == 0);
 	}
 
 	SECTION("Bound overlap, first and third tier") {
@@ -284,10 +249,6 @@ TEST_CASE("HTable") {
 		REQUIRE(group.contains(1));
 
 		REQUIRE(table.numCells() == 2);
-		REQUIRE(table.numCellsTier(0) == 1);
-		REQUIRE(table.numCellsTier(1) == 0);
-		REQUIRE(table.numCellsTier(2) == 1);
-		REQUIRE(table.numCellsTier(3) == 0);
 	}
 
 	SECTION("Bound overlap, first and fourth tier") {
@@ -309,10 +270,6 @@ TEST_CASE("HTable") {
 		REQUIRE(group.contains(1));
 
 		REQUIRE(table.numCells() == 2);
-		REQUIRE(table.numCellsTier(0) == 1);
-		REQUIRE(table.numCellsTier(1) == 0);
-		REQUIRE(table.numCellsTier(2) == 0);
-		REQUIRE(table.numCellsTier(3) == 1);
 	}
 
 	SECTION("Bound overlap, all tiers") {
@@ -324,10 +281,6 @@ TEST_CASE("HTable") {
 		prep();
 
 		REQUIRE(table.numCells() == 4);
-		REQUIRE(table.numCellsTier(0) == 1);
-		REQUIRE(table.numCellsTier(1) == 1);
-		REQUIRE(table.numCellsTier(2) == 1);
-		REQUIRE(table.numCellsTier(3) == 1);
 
 		// Overlaps generated:
 		// 0, 1, 2, 3

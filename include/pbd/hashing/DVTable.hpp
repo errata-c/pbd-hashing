@@ -1,6 +1,6 @@
 #pragma once
 #include <pbd/hashing/Grid.hpp>
-#include <pbd/hashing/BBox.hpp>
+#include <pbd/common/BBox.hpp>
 #include <pbd/hashing/BaseTable.hpp>
 
 namespace pbd {

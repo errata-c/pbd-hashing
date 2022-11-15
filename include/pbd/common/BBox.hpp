@@ -1,7 +1,11 @@
 #pragma once
 #include <glm/common.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtx/quaternion.hpp>
 #include <algorithm>
 #include <iostream>
+#include <complex>
+#include <cmath>
 
 namespace pbd {
 	// Bounding box type ripped from ez::geo.
@@ -10,7 +14,7 @@ namespace pbd {
 	struct BBox {
 		static_assert(L > 1, "pbd::BBox requires a number of dimensions greater than one!");
 		static_assert(L <= 4, "pbd::BBox is not defined for dimensions greater than four!");
-		static_assert(std::is_floating_point_v<scalar_t>, "ez::MMRect requires an arithmetic value type!");
+		static_assert(std::is_floating_point_v<scalar_t>, "pbd::BBox requires an arithmetic value type!");
 
 		using T = scalar_t;
 		using vec_t = glm::vec<L, scalar_t>;
@@ -131,7 +135,7 @@ namespace pbd {
 		};
 
 
-		self_t& shrink(const vec_t& minv, const vec_t& maxv) noexcept {
+		self_t& contract(const vec_t& minv, const vec_t& maxv) noexcept {
 			min += minv;
 			max -= maxv;
 			vec_t c = center();
@@ -141,26 +145,24 @@ namespace pbd {
 
 			return *this;
 		};
-		self_t& shrink(const vec_t& amount) noexcept {
-			return shrink(amount, amount);
+		self_t& contract(const vec_t& amount) noexcept {
+			return contract(amount, amount);
 		};
-		self_t& shrink(const T& amount) noexcept {
-			return shrink(vec_t(amount), vec_t(amount));
+		self_t& contract(const T& amount) noexcept {
+			return contract(vec_t(amount), vec_t(amount));
 		};
-
-		// Listen, I know this is not proper english.
-		// It fits the naming scheme here, and THAT is more important to me.
-		self_t shrinked(const T& amount) const noexcept {
+	
+		self_t contracted(const T& amount) const noexcept {
 			self_t copy = *this;
-			return copy.shrink(amount);
+			return copy.contract(amount);
 		};
-		self_t shrinked(const vec_t& amount) const noexcept {
+		self_t contracted(const vec_t& amount) const noexcept {
 			self_t copy = *this;
-			return copy.shrink(amount);
+			return copy.contract(amount);
 		};
-		self_t shrinked(const vec_t& minv, const vec_t& maxv) const noexcept {
+		self_t contracted(const vec_t& minv, const vec_t& maxv) const noexcept {
 			self_t copy = *this;
-			return copy.shrink(minv, maxv);
+			return copy.contract(minv, maxv);
 		};
 		
 		template<typename F>
@@ -274,6 +276,63 @@ namespace pbd {
 				glm::any(glm::greaterThan(glm::abs(min - other.min), EpsV())) ||
 				glm::any(glm::greaterThan(glm::abs(max - other.max), EpsV()));
 		}
+
+		template<int K = L, typename = std::enable_if_t<(K == 2)>>
+		self_t rotated(const T& angle) const noexcept {
+			return rotated(std::complex<T>(std::cos(angle), std::sin(angle)));
+		}
+
+		template<int K = L, typename = std::enable_if_t<(K == 2)>>
+		self_t rotated(const std::complex<T>& rot) const noexcept {
+			auto rotate = [&](const glm::tvec2<T> & pos) {
+				std::complex<T> tmp{pos.x, pos.y};
+				tmp = tmp * rot;
+				return glm::tvec2<T>(tmp.real(), tmp.imag());
+			};
+
+			glm::tvec2<T> tmp = rotate(min);
+			self_t result(tmp, tmp);
+			result.merge(rotate(glm::tvec2<T>(min.x, max.y)));
+			result.merge(rotate(glm::tvec2<T>(max.x, min.y)));
+			result.merge(rotate(max));
+
+			return result;
+		}
+
+		template<int K = L, typename = std::enable_if_t<(K == 3)>>
+		self_t rotated(const T& angle, const glm::tvec3<T>& axis) const noexcept {
+			return rotated(glm::angleAxis(angle, axis));
+		}
+
+		template<int K = L, typename = std::enable_if_t<(K == 3)>>
+		self_t rotated(const glm::tquat<T> & rot) const noexcept {
+			glm::tquat<T> crot = glm::conjugate(rot);
+
+			auto rotate = [&](const glm::tvec3<T> & pos) {
+				glm::tquat<T> tmp;
+				tmp.x = pos.x;
+				tmp.y = pos.y;
+				tmp.z = pos.z;
+				tmp.w = T(0);
+
+				tmp = rot * tmp * crot;
+				return glm::tvec3<T>(tmp.x, tmp.y, tmp.z);
+			};
+
+			glm::tvec3<T> tmp = rotate(min);
+			self_t result(tmp, tmp);
+			result.merge(rotate(glm::tvec3<T>(min.x, min.y, max.z)));
+			result.merge(rotate(glm::tvec3<T>(min.x, max.y, min.z)));
+			result.merge(rotate(glm::tvec3<T>(min.x, max.y, max.z)));
+			
+			result.merge(rotate(glm::tvec3<T>(max.x, min.y, min.z)));
+			result.merge(rotate(glm::tvec3<T>(max.x, min.y, max.z)));
+			result.merge(rotate(glm::tvec3<T>(max.x, max.y, min.z)));
+			result.merge(rotate(glm::tvec3<T>(max.x, max.y, max.z)));
+
+			return result;
+		}
+
 
 		vec_t min, max;
 	};

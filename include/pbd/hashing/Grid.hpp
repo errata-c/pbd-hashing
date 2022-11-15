@@ -3,7 +3,7 @@
 #include <cmath>
 #include <glm/glm.hpp>
 #include <glm/common.hpp>
-#include <pbd/hashing/common.hpp>
+#include <pbd/hashing/util.hpp>
 
 namespace pbd {
 	template<typename index_t, glm::length_t L, typename scalar_t>

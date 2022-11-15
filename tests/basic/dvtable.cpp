@@ -1,8 +1,8 @@
 #include <glm/gtx/io.hpp>
 #include <array>
 
-#include <pbd/hashing/BBox.hpp>
-#include <pbd/hashing/common.hpp>
+#include <pbd/common/BBox.hpp>
+#include <pbd/hashing/util.hpp>
 #include <pbd/hashing/Grid.hpp>
 #include <pbd/hashing/DVTable.hpp>
 
